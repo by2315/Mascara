@@ -1,0 +1,16 @@
+1. Input Text Categorization:
+   1. Questions
+      1. Factual: Definition/Example, Comparison => Definition, Example, List Chart, Additional Questions
+      2. Subjective: Opinion/Review of Restaurant/Object/Location => Rating, Pictures, Experience
+   2. Website Travel
+      1. Intend to travel to a specific website for information; Yelp/小红书/Google Review for restaurant & location rating. Amazon/小红书 for Object review
+      2. Reddit for Social Opinion of any specific matter, General Q&A
+      3. Youtube for Video Content
+   3. subphrase search
+   4. General Browsing
+
+
+Scraping
+1. Browse through webpage and find URL for ALL reviews
+    1. Automate the search for URL process, URL format can be random
+2. Use existing functions to scrape URL

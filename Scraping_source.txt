@@ -1,0 +1,14 @@
+CN:
+Tmall
+Tabbao
+xiaohongshu
+
+EN:
+Sephora
+Amazon
+Macy
+
+FR:
+Sephora
+Nocibe
+Marionnaud
