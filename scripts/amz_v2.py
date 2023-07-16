@@ -12,7 +12,7 @@ from selenium.webdriver.chrome.options import Options
 
 def webdriver_options():
     chrome_options = Options()
-    Options.add_argument('--headless')
+    chrome_options.add_argument('--headless')
     chrome_options.add_argument('--disable-popup-blocking')
     chrome_options.add_argument('--disable-new-window')
     return chrome_options
