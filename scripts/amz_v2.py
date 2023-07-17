@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait as wait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.options import Options
+import jsonpickle
 
 def webdriver_options():
     chrome_options = Options()
@@ -263,11 +264,11 @@ def scrap_product_reviews(web_driver_product_reviews, review_dataset):
     return review_dataset
 def save_products(product_name, products_dataset):
     current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
     file_name = f'{product_name}_amazon_reviews_{current_time}.txt'
 
     with open(file_name, 'w') as f:
-        f.write(json.dumps(products_dataset))
+        serialized_data = jsonpickle.encode(products_dataset)
+        f.write(serialized_data)
 
 keyword = "Mascara"
 search_amazon(keyword)
