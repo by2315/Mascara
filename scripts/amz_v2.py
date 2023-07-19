@@ -1,4 +1,3 @@
-import json
 import sys
 from datetime import datetime
 from selenium import webdriver
@@ -10,6 +9,23 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.options import Options
 import jsonpickle
+import difflib
+
+product_name_1 = "Covergirl Lash Blast Volume Mascara, Very Black"
+product_name_2 = "Covergirl Lash Blast Volume Waterproof Mascara, Volumizing Mascara, Black, Pack of 2"
+
+matches = difflib.get_close_matches(product_name_1, [product_name_2], n=1, cutoff=0.8)
+
+if matches:
+    print("The product names are considered similar.")
+else:
+    print("The product names are not considered similar.")
+
+
+def product_exists(product_name, products_dataset):
+    existing_products = [product['product_name'] for product in products_dataset]
+    matches = difflib.get_close_matches(product_name, existing_products, n=1, cutoff=0.8)
+    return True if matches else False
 
 def webdriver_options():
     chrome_options = Options()
@@ -154,11 +170,12 @@ def scrap_product(individual_item):
         review_url = driver_product.find_elements(By.XPATH,
                                                   '//a[@data-hook="see-all-reviews-link-foot" and contains(@class, "a-link-emphasis a-text-bold")]')
 
-    ############
-    print(review_url[0].get_attribute('href'))
-    ############
-
     if review_url != []:
+
+        ############
+        print(review_url[0].get_attribute('href'))
+        ############
+
         product['review_url'] = review_url[0].get_attribute('href')
         driver_product.get(product['review_url'])
         try:
