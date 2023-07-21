@@ -81,6 +81,7 @@ def search_amazon(search_product_name):
             save_products(keyword, products)
 
     driver.quit()
+    print("All Amazon Reviews for Scrapped!") 
     return products
 def scrape_page(web_driver,products_dataset):
     try:
