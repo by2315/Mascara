@@ -1,295 +1,289 @@
-import requests
-from bs4 import BeautifulSoup
-import time
-import json
-
-'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.366'
-
-def get_total_pages(search_query):
-    # Format the search query for the Amazon URL
-    formatted_query = search_query.replace(' ', '+')
-    url = f'https://www.amazon.com/s?k={formatted_query}'
-
-    # Define user agent header
-    headers = ({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US, en;q=0.5'
-    })
-
-    # Send a GET request to the search results page
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        # Find the pagination container
-        pagination = soup.find('span', {'class': 's-pagination-item s-pagination-disabled'})
-        if pagination:
-            total_pages = int(pagination.text.strip())
-            return total_pages
-
-    return 0
-
-## Need to Optimize out the Sponsored and Highly rated reviews because they will be duplicates
-def search_amazon_mascara(search_query, num_pages):
-    search_results = []
-
-    total_pages = get_total_pages(search_query)
-    if total_pages == 0:
-        print("No search results found.")
-
-
-    # Format the search query for the Amazon URL
-    formatted_query = search_query.replace(' ', '+')
-
-    for page in range(1, total_pages + 1):
-
-        '#################'
-        page=1
-        '#################'
-
-        print(page, 'Out of', total_pages)
-
-        url = f'https://www.amazon.com/s?k={formatted_query}&page={page}'
-
-        # Define user agent header
-        headers = ({
-            'User-Agent': 'Mozilla/5.0 (X11; CrOS x86_64 10066.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US, en;q=0.5'
-
-        })
-
-        # Send a GET request to the search results page
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # Find the search result containers
-            result_containers = soup.find_all('div', {'data-component-type': 's-search-result'})
-
-            for container in result_containers:
-                result = {}
-
-                # Extract the product name
-                '####################'
-                product_name = result_containers[0].find('span', {'class': 'a-size-base-plus'})
-                '####################'
-
-                if product_name:
-                    result['product_name'] = product_name.text.strip()
-                else:
-                    continue
-
-                # Extract the product URL
-                '####################'
-                product_url = result_containers[0].find('a', {'class': 'a-link-normal'})
-                '####################'
-
-                if product_url:
-                    result['product_url'] = 'https://www.amazon.com' + product_url['href']
-                else:
-                    continue
-
-                # Extract the Review URL
-                product_response = requests.get(result['product_url'], headers=headers)
-
-                if product_response.status_code == 200:
-                    product_soup = BeautifulSoup(product_response.content, 'html.parser')
-                    review_url = product_soup.find('a', {'data-hook': 'see-all-reviews-link-foot'})
-
-                    if review_url:
-                        result['review_url'] = 'https://www.amazon.com' + review_url['href']
-                    else:
-                        continue
-
-                result['reviews']=scrape_amazon_reviews(result['review_url'])
-
-                search_results.append(result)
-
-        # Add a delay of 2 seconds between requests to avoid overwhelming the server
-        time.sleep(2)
-    return search_results
-
-#Need to Optimize to find all reviews
-def scrape_amazon_reviews(review_url):
-
-    reviews = []
-
-    # Define user agent header
-    review_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0'
-    }
-
-    for page_number in range(1, 1000):
-
-        # Send a GET request to the product page
-        review_response = requests.get(result['review_url'], headers=review_headers)
-
-        print(review_response)
-
-        if review_response.status_code == 200:
-
-            review_soup = BeautifulSoup(review_response.text, 'html.parser')
-
-            # Find the review containers
-
-            review_containers = review_soup.find_all('div', {'data-hook':'review'})
-
-            print(review_containers)
-
-            if not (review_containers):
-                return reviews
-
-            for container in review_containers:
-                review = {}
-
-                # Extract the reviewer name
-                reviewer = container.find('span', {'class': 'a-profile-name'})
-                if reviewer:
-                    review['reviewer'] = reviewer.text.strip()
-                else:
-                    review['reviewer'] = 'Anonymous'
-
-                # Extract the review rating
-                rating = container.find('span', {'class': 'a-icon-alt'})
-                if rating:
-                    review['rating'] = rating.text.strip().split()[0]
-                else:
-                    review['rating'] = 'Not available'
-
-                # Extract the review text
-                review_text = container.find('span', {'data-hook': 'review-body'})
-                if review_text:
-                    review['review_text'] = review_text.text.strip()
-                else:
-                    review['review_text'] = 'No review text available'
-
-                reviews.append(review)
-
-
-search_query = 'mascara'
-num_pages =1
-# Perform the search and get the search results
-search_results = search_amazon_mascara(search_query, num_pages)
-
-filename = 'amz_review_URL.txt'
-with open(filename,'w')as f:
-    f.write(json.dumps(search_results))
-
-# Iterate over each search result
-for result in search_results:
-    product_name = search_results['product_name']
-    product_url = search_results['product_url']
-
-    print(f'Product Name: {product_name}')
-    print(f'Product URL: {product_url}')
-
-    # Scrape the reviews for the product
-    scraped_reviews = scrape_amazon_reviews(product_url)
-
-    if scraped_reviews:
-        for review in scraped_reviews:
-            print(f'Reviewer: {review["reviewer"]}')
-            print(f'Rating: {review["rating"]}')
-            print(f'Review: {review["review_text"]}')
-            print('---')
-
-# Save the reviews to a text file
-filename = 'amazon_reviews.txt'
-save_reviews_to_file(scraped_reviews, filename)
-print(f'Reviews saved to file: {filename}')
-
-https://www.amazon.com/Covergirl-Lash-Blast-Mascara-Black/product-reviews/B00EMAM9BC/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews&pageNumber=1
-https://www.amazon.com/Covergirl-Lash-Blast-Mascara-Black/product-reviews/B00EMAM9BC/ref=cm_cr_arp_d_paging_btm_next_2?ie=UTF8&reviewerType=all_reviews&pageNumber=2
-https://www.amazon.com/Covergirl-Lash-Blast-Mascara-Black/product-reviews/B00EMAM9BC/ref=cm_cr_getr_d_paging_btm_next_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3
-
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+import sys
+from datetime import datetime
 from selenium import webdriver
-'from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-'from webdriver_manager.firefox import GeckoDriverManager
-from selenium.webdriver.common.proxy import Proxy, ProxyType
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait as wait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.chrome.options import Options
+import jsonpickle
+import difflib
 
-HOSTNAME = 'us.smartproxy.com'
-PORT = '10000'
-DRIVER = 'CHROME'
+def product_exists(product_name, products_dataset):
+    existing_products = [product['product_name'] for product in products_dataset]
+    matches = difflib.get_close_matches(product_name, existing_products, n=1, cutoff=0.8)
+    return True if matches else False
 
-def smartproxy():
-  prox = Proxy()
-  prox.proxy_type = ProxyType.MANUAL
-  prox.http_proxy = '{hostname}:{port}'.format(hostname = HOSTNAME, port = PORT)
-  prox.ssl_proxy = '{hostname}:{port}'.format(hostname = HOSTNAME, port = PORT)
-  if DRIVER == 'FIREFOX':
-    capabilities = webdriver.DesiredCapabilities.FIREFOX
-  elif DRIVER == 'CHROME':
-    capabilities = webdriver.DesiredCapabilities.CHROME
-  prox.add_to_capabilities(capabilities)
-  return capabilities
+def webdriver_options():
+    chrome_options = Options()
+    #chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-popup-blocking')
+    chrome_options.add_argument('--disable-new-window')
+    return chrome_options
+def search_amazon(search_product_name):
 
-def webdriver_example():
-  if DRIVER == 'FIREFOX':
-    browser = webdriver.Firefox(service=Service(GeckoDriverManager().install()), proxy=smartproxy())
-  elif DRIVER == 'CHROME':
-    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), desired_capabilities=smartproxy())
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=webdriver_options())
+    driver.get('https://www.amazon.com')
 
-  browser.get('https://www.amazon.com/Covergirl-Lash-Blast-Mascara-Black/product-reviews/B00EMAM9BC/ref=cm_cr_dp_d_paging_btm_next_2?ie=UTF8&reviewerType=all_reviews&pageNumber=4')
+    #Search Product Name in Search Bar of Amazon
+    try:
+        search = driver.find_element(By.ID, 'twotabsearchtextbox')
+        search.send_keys(search_product_name)
+        search_button = driver.find_element(By.ID, 'nav-search-submit-button')
+        search_button.click()
+    except NoSuchElementException:
+        try:
+            driver.refresh()
+            search = driver.find_element(By.ID, 'nav-bb-search')
+            search.send_keys(search_product_name)
+            search_button = driver.find_element(By.CLASS_NAME, 'nav-bb-button')
+            search_button.click()
+        except NoSuchElementException:
+            print("No Search Bar, Couldn't search because didn't find element 'twotabsearchtextbox' or 'nav-bb-search'!")
+            sys.exit()
 
-  print(browser.page_source)
-  browser.quit()
+    #Index through each product in search result and scrap product data
+    products = []
 
-if __name__ == '__main__':
-  webdriver_example()
+    last_product_page = 0
+    while last_product_page != 1:
+        try:
+            pagination = driver.find_element(By.XPATH,
+                                             '//a[@class="s-pagination-item s-pagination-next s-pagination-button s-pagination-separator"]').get_attribute(
+                'href')
+            products.append(scrape_page(driver, products))
 
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
-  from selenium import webdriver
-  from selenium.webdriver.common.by import By
-  from selenium.webdriver.support.ui import WebDriverWait
-  from selenium.webdriver.support import expected_conditions as EC
+            #Save Products Dataset
+            save_products(keyword, products)
+
+            # Open the Next Product Search Page
+            last_product_page = 0
+            driver.get(pagination)
+
+        except NoSuchElementException:
+            last_product_page = 1
+            scrape_page(driver, products)
+
+            # Save Products Dataset
+            save_products(keyword, products)
+
+    driver.quit()
+    print("All Amazon Reivew Scrapped")
+    return products
+def scrape_page(web_driver,products_dataset):
+    try:
+        items = wait(web_driver, 30).until(
+            EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@class, "s-result-item s-asin")]')))
+    except NoSuchElementException:
+        web_driver.refresh()
+        try:
+            items = wait(web_driver, 30).until(
+                EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@class, "s-result-item s-asin")]')))
+        except NoSuchElementException:
+            print('No products found!')
+            return products_dataset
+    for item in items:
+        product = scrap_product(item)
+        products_dataset.append(product)
+
+    return products_dataset
+def scrap_product(individual_item):
+    product = {}
+    # Extract Product Name
+    try:
+        name = individual_item.find_element(By.XPATH, '//span[@class="a-size-base-plus a-color-base a-text-normal"]')
+        product['name'] = name.text
+    except NoSuchElementException:
+        product['name'] = []
+        pass
+
+    # Extract Product Asin
+    try:
+        product_asin = individual_item.get_attribute("data-asin")
+        product['asin'] = product_asin
+    except NoSuchElementException:
+        product['asin'] = []
+        pass
+
+    # Extract Product Price
+    try:
+        whole_price = individual_item.find_elements(By.XPATH, './/span[@class="a-price-whole"]')
+        fraction_price = individual_item.find_elements(By.XPATH, './/span[@class="a-price-fraction"]')
+
+        if whole_price != [] and fraction_price != []:
+            price = '.'.join([whole_price[0].text, fraction_price[0].text])
+        else:
+            price = 0
+        product['price'] = price
+    except NoSuchElementException:
+        product['price'] = []
+
+    # Extract Rating
+    try:
+        rating_box = individual_item.find_elements(By.XPATH, './/div[@class="a-row a-size-small"]/span')
+
+        if rating_box:
+            rating = rating_box[0].get_attribute('aria-label')
+            rating_num = rating_box[1].get_attribute('aria-label')
+        else:
+            rating, rating_num = 0, 0
+
+        product['rating'] = rating
+        product['rating_Num'] = rating_num
+    except NoSuchElementException:
+        product['rating'] = []
+        product['rating_Num'] = []
+
+    # Find Product URL and Open URL
+    product_url = individual_item.find_element(By.XPATH,
+                                    './/a[@class="a-link-normal s-underline-text s-underline-link-text s-link-style a-text-normal"]').get_attribute(
+        "href")
+    product['product_url'] = product_url
+
+    driver_product = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=webdriver_options())
+    driver_product.get(product_url)
+
+    try:
+        wait(driver_product, 30).until(
+            EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@class, "a-section a-spacing-none")]')))
+    except (NoSuchElementException, TimeoutException) as e:
+        driver_product.refresh()
+
+    # Find and open All Reviews URL for Product
+    try:
+        review_url = driver_product.find_elements(By.XPATH,
+                                                  '//a[@data-hook="see-all-reviews-link-foot" and contains(@class, "a-link-emphasis a-text-bold")]')
+    except (NoSuchElementException, TimeoutException) as e:
+        driver_product.refresh()
+        review_url = driver_product.find_elements(By.XPATH,
+                                                  '//a[@data-hook="see-all-reviews-link-foot" and contains(@class, "a-link-emphasis a-text-bold")]')
+
+    if review_url != []:
+
+        ############
+        print(review_url[0].get_attribute('href'))
+        ############
+
+        product['review_url'] = review_url[0].get_attribute('href')
+        driver_product.get(product['review_url'])
+        try:
+            wait(driver_product, 30).until(
+                EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@role, "main")]')))
+        except (NoSuchElementException, TimeoutException) as e:
+            try:
+                driver_product.refresh()
+                wait(driver_product, 30).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@role, "main")]')))
+            except (NoSuchElementException, TimeoutException) as e:
+                return product
+
+    else:
+        product['review_url'] = []
+        product['reviews'] = []
+        return product
 
 
-  def scrape_amazon_reviews(url):
-      # Set up Selenium webdriver
-      driver = webdriver.Chrome()
-      driver.get(url)
+    # Extract Reviews for product
+    reviews = []
+    last_review_page = 0
 
-      # Wait for the review section to load
-      WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'cm_cr-review_list')))
+    while last_review_page != 1:
 
-      # Extract the review elements
-      review_elements = driver.find_elements(By.XPATH, '//div[@data-hook="review"]')
+        try:
+            next_page = driver_product.find_element(By.XPATH, '//li[@class="a-last"]//a')
 
-      products = []
-      for review_element in review_elements:
-          product = {}
+            reviews.append(scrap_product_reviews(driver_product,reviews))
 
-          # Extract reviewer name
-          reviewer_element = review_element.find_element(By.XPATH, './/span[@class="a-profile-name"]')
-          review['reviewer'] = reviewer_element.text.strip()
+            driver_product.get(next_page.get_attribute('href'))
 
-          # Extract review rating
-          rating_element = review_element.find_element(By.XPATH, './/i[@data-hook="review-star-rating"]')
-          review['rating'] = rating_element.get_attribute('aria-label').strip().split()[0]
+            # Check if next page is loaded
+            try:
+                wait(driver_product, 30).until(
+                    EC.presence_of_all_elements_located((By.XPATH, '//div[contains(@role, "main")]')))
+            except NoSuchElementException:
+                driver_product.refresh()
 
-          # Extract review text
-          review_text_element = review_element.find_element(By.XPATH, './/span[@data-hook="review-body"]')
-          review['review_text'] = review_text_element.text.strip()
+            last_review_page = 0
 
-          reviews.append(review)
+        except NoSuchElementException:
+            last_review_page = 1
+            reviews.append(scrap_product_reviews(driver_product,reviews))
 
-      # Close the Selenium webdriver
-      driver.quit()
+    product['reviews'] = reviews
 
-      return reviews
+    # Close the driver product webdriver
+    driver_product.quit()
+
+    return product
+def scrap_product_reviews(web_driver_product_reviews, review_dataset):
+    # Extract review elements
+
+    try:
+        review_elements = web_driver_product_reviews.find_elements(By.XPATH, '//div[@data-hook="review"]')
+    except NoSuchElementException:
+        print("No Reviews Element Found in Page")
+        review={}
+        review_dataset.append(review)
+        return review_dataset
+
+    for review_element in review_elements:
+        review = {}
+
+        # Extract reviewer name
+        try:
+            reviewer_element = review_element.find_element(By.XPATH, './/span[@class="a-profile-name"]')
+            review['reviewer'] = reviewer_element.text.strip()
+        except NoSuchElementException:
+            review['reviewer'] = 'None'
+            pass
+
+        # Extract review rating
+        try:
+            rating_element = review_element.find_element(By.XPATH, './/i[@data-hook="review-star-rating"]')
+            rating = rating_element.find_element(By.XPATH, './/span[@class="a-icon-alt"]')
+            review['rating'] = rating.get_attribute('textContent').strip().split()[0]
+        except NoSuchElementException:
+            review['rating'] = 'None'
+            pass
+
+        # Extract review text
+        try:
+            review_text_element = review_element.find_element(By.XPATH, './/span[@data-hook="review-body"]')
+            review['review_text'] = review_text_element.text.strip()
+        except NoSuchElementException:
+            review['review_text'] = 'None'
+            pass
+
+        # Extract picture
+        try:
+            review_images_element = review_element.find_elements(By.XPATH,
+                                                                 './/div[@class="review-image-tile-section"]//img')
+            review['img'] = [image.get_attribute('src') for image in review_images_element]
+        except NoSuchElementException:
+            review['img'] = 'None'
+            pass
+
+        #Append review to review_dataset
+        review_dataset.append(review)
+
+    return review_dataset
+def save_products(product_name, products_dataset):
+    current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    file_name = f'{product_name}_amazon_reviews_{current_time}.txt'
+
+    with open(file_name, 'w') as f:
+        serialized_data = jsonpickle.encode(products_dataset)
+        f.write(serialized_data)
+
+keyword = "Mascara"
+keyword_products=search_amazon(keyword)
+save_products(keyword,keyword_products)
+
+# Problems
+# Convert downloaded image url to 64bit data (ChatGPT)
+# Add Checking Mechanism to compare newly added product to existing product
 
 
-  # Example usage
-  url = 'https://www.amazon.com/product-reviews/PRODUCT_ID'
-  reviews = scrape_amazon_reviews(url)
-
-  for review in reviews:
-      print(f'Reviewer: {review["reviewer"]}')
-      print(f'Rating: {review["rating"]}')
-      print(f'Review: {review["review_text"]}')
-      print('---')
 
